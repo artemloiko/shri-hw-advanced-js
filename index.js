@@ -101,3 +101,53 @@
   console.log(symbol in proxy);
   console.groupEnd("[IN OPERATOR PROXY]");
 })();
+
+(() => {
+  // ASYNC EXECUTOR
+
+  function asyncExecutor(generator) {
+    const iterator = generator();
+
+    const iterate = ({ value, done }) => {
+      if (done) return;
+
+      if (value instanceof Promise) {
+        value.then((v) => iterate(iterator.next(v))).catch((err) => iterate(iterator.throw(err)));
+      } else {
+        iterate(iterator.next());
+      }
+    };
+
+    iterate(iterator.next());
+  }
+
+  // тесты
+  const ID = 42;
+  const delayMS = 1000;
+
+  function getId() {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(ID);
+      }, delayMS);
+    });
+  }
+
+  function getDataById(id) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        id === ID ? resolve("🍎") : reject("💥");
+      }, delayMS);
+    });
+  }
+
+  asyncExecutor(function* () {
+    console.time("Time");
+
+    const id = yield getId();
+    const data = yield getDataById(id);
+    console.log("Data", data);
+
+    console.timeEnd("Time");
+  });
+})();
